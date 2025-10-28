@@ -1,0 +1,2 @@
+# CRNN to bypass CAPTCHA security
+Developing a CRNN to bypass the Completely Automation Turing test to tell Computers and Humans Apart. Given an image with 5 characters with background noise like lines and dots.
