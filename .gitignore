@@ -8,5 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# added files
+.DS_Store
 .python_version
-.toml
+*.toml
+uv.lock
+dataset/
+pruebas.py
