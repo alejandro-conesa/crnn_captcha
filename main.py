@@ -39,3 +39,6 @@ class CRNNDataModule(L.LightningDataModule):
         return torch.utils.data.DataLoader(
             dataset=self.val_dataset, batch_size=self.batch_size, shuffle=False
         )
+
+
+
