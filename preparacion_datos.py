@@ -66,9 +66,9 @@ class CaptchaDataset(torch.utils.data.Dataset):
 
     def load_all(self):
         if self.name == "base":
-            self.train_ds = CaptchaDataset(name="train")
-            self.val_ds = CaptchaDataset(name="val")
-            self.test_ds = CaptchaDataset(name="test")
+            self.train_ds = CaptchaDataset(name="train", augments=self.augments)
+            self.val_ds = CaptchaDataset(name="val", augments=self.augments)
+            self.test_ds = CaptchaDataset(name="test", augments=self.augments)
             self.stage = "loading"
 
             if len(os.listdir(self.path_to_txt)) == 4:
