@@ -100,3 +100,4 @@ if __name__ == "__main__":
     print(train_ds)
     print(val_ds)
     print(test_ds)
+    print(test_ds[0])
