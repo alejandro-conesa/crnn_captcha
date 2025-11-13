@@ -16,4 +16,23 @@ class CaptchaCRNN(torch.nn.Module):
         self.maxpool1x2 = torch.nn.MaxPool2d(kernel_size=(1,2), stride=2)
         self.batchnorm2d = torch.nn.BatchNorm2d(512)
 
-        self.lstm = torch.nn.LSTM()
+        # self.lstm = torch.nn.LSTM()
+    
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.maxpool2x2(x)
+        x = self.conv2(x)
+        x = self.maxpool2x2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.maxpool1x2(x)
+        x = self.conv5(x)
+        x = self.batchnorm2d(x)
+        x = self.conv6(x)
+        x = self.batchnorm2d(x)
+        x = self.maxpool1x2(x)
+        y = self.conv7(x)
+        return y
+    
+    def map_to_sequence(self, x):
+        pass

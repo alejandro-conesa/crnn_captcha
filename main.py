@@ -2,7 +2,10 @@ import torch
 import torchvision
 import lightning as L
 from lightning.fabric import seed_everything
+from fire import Fire
+from datamodule import CRNNDataModule
 from preparacion_datos import CaptchaDataset
+from crnn import CaptchaCRNN
 
 aumentos = torchvision.transforms.Compose(
     [
@@ -11,34 +14,39 @@ aumentos = torchvision.transforms.Compose(
     ]
 )
 
-class CRNNDataModule(L.LightningDataModule):
-    def __init__(self, batch_size):
-        super().__init__()
-        self.batch_size = batch_size
-        self.full_dataset = CaptchaDataset(augments = aumentos)
-        self.stage = None
-    
-    def setup(self, stage):
-        self.stage = stage
-        if self.stage == "fit":
-            self.train_dataset, self.val_dataset, _ = self.full_dataset.get_splits()
-        elif self.stage == "test":
-            self.test_dataset = self.full_dataset.get_splits()[2]
-    
-    def train_dataloader(self):
-        return torch.utils.data.DataLoader(
-            dataset=self.train_dataset, batch_size=self.batch_size, shuffle=True
-        )
+BATCH_SIZE = 2
 
-    def test_dataloader(self):
-        return torch.utils.data.DataLoader(
-            dataset=self.test_dataset, batch_size=self.batch_size, shuffle=False
-        )
+def main():
+    ## pruebas para map-to-sequence
+    modelo = CaptchaCRNN()
+    dataset = CaptchaDataset(augments=aumentos)
+    dm = CRNNDataModule(dataset=dataset, batch_size=BATCH_SIZE)
 
-    def val_dataloader(self):
-        return torch.utils.data.DataLoader(
-            dataset=self.val_dataset, batch_size=self.batch_size, shuffle=False
-        )
+    feature_vector_list = []
+
+    for data in dm.train_dataloader():
+        # data es una lista con el tensor de la imagen y una tupla que contiene SOLO el string objetivo
+        x = data[0].detach().clone()
+        output = modelo(x)
+        # un batch contiene n imágenes con 512 capas. cada capa contiene 2 listas, y cada lista 11
+        for tensor in output:
+            
+            # recorrer columnas
+            for i in range(len(tensor[0, 0])):
+                feature_vector = []
+                for j in range(len(tensor)):
+                    feature_vector.append(tensor[j, 0, i])
+                    feature_vector.append(tensor[j, 1, i])
+
+                
+                feature_vector_list.append(feature_vector.copy())
+        break
+
+    print(len(feature_vector_list))
 
 
+    # return
 
+if __name__ == '__main__':
+    # Fire(main)
+    main()
