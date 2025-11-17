@@ -17,8 +17,9 @@ class CaptchaCRNN(torch.nn.Module):
         self.maxpool1x2 = torch.nn.MaxPool2d(kernel_size=(1,2), stride=2)
         self.batchnorm2d = torch.nn.BatchNorm2d(512)
 
-        self.lstm = torch.nn.LSTM(input_size=1024, hidden_size=256, batch_first=True, bidirectional=True)
-    
+        self.lstm1 = torch.nn.LSTM(input_size=1024, hidden_size=256, batch_first=True, bidirectional=True)
+        self.lstm2 = torch.nn.LSTM(input_size=512, hidden_size=256, batch_first=True, bidirectional=True)
+
     def forward(self, x):
         x = self.conv1(x)
         x = self.maxpool2x2(x)
@@ -34,28 +35,14 @@ class CaptchaCRNN(torch.nn.Module):
         x = self.maxpool1x2(x)
         x = self.conv7(x)
         x = self.map_to_sequence(x)
-        x = self.lstm(x)
-        x = self.lstm(x)
+        x, _ = self.lstm1(x)
+        x, _ = self.lstm2(x)
         return x
     
     def map_to_sequence(self, x):
-        feature_seq_tensor = []
-        # un batch contiene n imágenes con 512 capas. cada capa contiene 2 listas, y cada lista 11
-        for tensor in x:
-            feature_sequence = []
-            # recorrer columnas
-            for i in range(len(tensor[0, 0])):
-                feature_vector = []
-                for j in range(len(tensor)):
-                    feature_vector.append(np.float32(tensor[j, 0, i].detach()))
-                    feature_vector.append(np.float32(tensor[j, 1, i].detach()))
-                
-                feature_sequence.append(feature_vector.copy())
-            
-            feature_seq_tensor.append(feature_sequence.copy())
-
-        feature_seq_tensor = torch.tensor(feature_seq_tensor)
-        return feature_seq_tensor
+        x = torch.flatten(x, start_dim=1, end_dim=2)
+        x = torch.transpose(x, 1, 2)
+        return x
     
     def transcription(self, x):
         pass

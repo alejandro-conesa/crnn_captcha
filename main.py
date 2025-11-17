@@ -28,7 +28,8 @@ def main():
     for data in dm.train_dataloader():
         # data es una lista con el tensor de la imagen y una tupla que contiene SOLO el string objetivo
         output_batch = modelo(data[0])
-        print(output_batch[0][0])
+        print(output_batch)
+        break
 
 if __name__ == '__main__':
     # Fire(main)
