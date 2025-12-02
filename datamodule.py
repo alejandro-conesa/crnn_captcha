@@ -10,6 +10,7 @@ class CRNNDataModule(L.LightningDataModule):
     
     def setup(self, stage):
         self.stage = stage
+        self.w2i, self.i2w = self.full_dataset.get_w2i()
         if self.stage == "fit":
             self.train_dataset, self.val_dataset, _ = self.full_dataset.get_splits()
         elif self.stage == "test":

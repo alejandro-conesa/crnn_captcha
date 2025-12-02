@@ -1,0 +1,1 @@
+uv run main.py --name prueba1_ctcloss --seed 27 --accelerator cpu 

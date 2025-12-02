@@ -34,9 +34,10 @@ class CaptchaDataset(torch.utils.data.Dataset):
     
     def process_images(self, dataset_path="dataset/"):
         for path in os.listdir(dataset_path):
-            self.images.append(dataset_path + path)
-            label = path[:5]
-            self.labels.append(label)
+            if path != 'guides':
+                self.images.append(dataset_path + path)
+                label = path[:5]
+                self.labels.append(label)
     
     def create_subsets(self):
         train_ds, val_ds, test_ds = torch.utils.data.random_split(
@@ -92,6 +93,22 @@ class CaptchaDataset(torch.utils.data.Dataset):
     
     def get_splits(self):
         return self.train_ds, self.val_ds, self.test_ds
+    
+    def get_w2i(self):
+        w2i = {'-': 0}
+        i2w = {'0': '-'}
+        count = 1
+
+        for etiqueta in self.labels:
+            for letra in etiqueta:
+                if letra == 'i':
+                    print(etiqueta)
+                if letra not in w2i.keys():
+                    w2i[str(letra)] = count
+                    i2w[str(count)] = letra
+                    count += 1
+        
+        return w2i, i2w
 
 if __name__ == "__main__":
     dataset = CaptchaDataset()

@@ -3,8 +3,11 @@ import torchvision
 import numpy as np
 
 class CaptchaCRNN(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, w2i, i2w):
         super().__init__()
+        self.w2i = w2i
+        self.i2w = i2w
+
         self.conv1 = torch.nn.Conv2d(1, 64, kernel_size=3, padding="same", stride=1)
         self.conv2 = torch.nn.Conv2d(64, 128, kernel_size=3, padding="same", stride=1)
         self.conv3 = torch.nn.Conv2d(128, 256, kernel_size=3, padding="same", stride=1)
@@ -19,6 +22,7 @@ class CaptchaCRNN(torch.nn.Module):
 
         self.lstm1 = torch.nn.LSTM(input_size=1024, hidden_size=256, batch_first=True, bidirectional=True)
         self.lstm2 = torch.nn.LSTM(input_size=512, hidden_size=256, batch_first=True, bidirectional=True)
+        self.dense = torch.nn.Linear(512, 20)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -37,12 +41,14 @@ class CaptchaCRNN(torch.nn.Module):
         x = self.map_to_sequence(x)
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
+        x = self.dense(x)
+        # x = torch.nn.Softmax(dim=2)(x)
+        # x = torch.argmax(x, dim=2)
+        # x = self.transcription(x)
+        # x = self.clean(x)
         return x
     
     def map_to_sequence(self, x):
-        x = torch.flatten(x, start_dim=1, end_dim=2)
-        x = torch.transpose(x, 1, 2)
+        x = x.permute(0, 3, 1, 2)
+        x = torch.flatten(x, start_dim=2)
         return x
-    
-    def transcription(self, x):
-        pass
