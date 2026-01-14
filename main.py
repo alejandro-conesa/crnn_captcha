@@ -36,8 +36,14 @@ class Lightning_CRNN(L.LightningModule):
         target = Utils.batch_w2i(target, self.modelo.w2i)
 
         if batch_idx == 0:
-            print(output)
-            print(target)
+            # print(output.size())
+            prediccion = output.softmax(dim = 2)
+            prediccion = prediccion.argmax(dim = 2)
+            prediccion = Utils.transcription(prediccion, self.modelo.i2w)
+            prediccion = Utils.clean(prediccion)
+            print(prediccion)
+            # print(target.size())
+            print(Utils.transcription(target, self.modelo.i2w))
 
         flatten_target = torch.flatten(target.clone())
 
@@ -50,6 +56,38 @@ class Lightning_CRNN(L.LightningModule):
         loss = torch.nn.functional.ctc_loss(log_prob, flatten_target, input_lengths, target_lengths)
         self.log("train_loss", loss, on_epoch=True)
 
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        inputs, target = batch
+        output = self.modelo(inputs)
+        target = Utils.batch_w2i(target, self.modelo.w2i)
+
+        prediccion = output.softmax(dim = 2)
+        prediccion = prediccion.argmax(dim = 2)
+        prediccion = Utils.transcription(prediccion, self.modelo.i2w)
+        prediccion = Utils.clean(prediccion)
+        ground_truth = Utils.transcription(target, self.modelo.i2w)
+
+        # lista con strings objetivo para calcular cer
+        prediccion_string = ["".join(sublist) for sublist in prediccion.tolist()]
+        # print(target.size())
+        ground_truth_string = ["".join(sublist) for sublist in ground_truth.tolist()]
+
+        flatten_target = torch.flatten(target.clone())
+
+        output = output.permute(1, 0, 2)
+        log_prob = torch.nn.functional.log_softmax(output, dim=2)
+        T = log_prob.size(0)
+        input_lengths = torch.full((BATCH_SIZE,), T, dtype=torch.long)
+        target_lengths = torch.full((BATCH_SIZE,), 5, dtype=torch.long)
+
+        loss = torch.nn.functional.ctc_loss(log_prob, flatten_target, input_lengths, target_lengths)
+        self.log("train_loss", loss, on_epoch=True)
+
+        cer = [Utils.calculate_cer(gts, ps) for gts, ps in zip(ground_truth_string, prediccion_string)]
+        cer_mean = sum(cer)/len(cer)
+        self.log("character_error_rate", cer_mean, on_epoch=True)
         return loss
     
     def configure_optimizers(self):
@@ -68,7 +106,7 @@ def main(name, seed, accelerator, devices=1):
     summary = ModelSummary(max_depth=3)
 
 
-    trainer = L.Trainer(accelerator=accelerator, devices=devices, max_epochs=10)
+    trainer = L.Trainer(accelerator=accelerator, devices=devices, max_epochs=10, callbacks=[summary])
     trainer.fit(modelo, datamodule=dm)
 
     # print(np.array(dataset.labels))

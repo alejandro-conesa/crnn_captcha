@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from Levenshtein import distance
 
 class Utils():
     @classmethod
@@ -52,3 +53,9 @@ class Utils():
             output.append(np.array(clean_seq))
         
         return np.array(output)
+    
+    @classmethod
+    def calculate_cer(cls, a, b):
+        edit_distance = distance(a, b)
+        cer = edit_distance/len(a)
+        return cer
