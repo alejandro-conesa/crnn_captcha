@@ -27,31 +27,26 @@ class Utils():
 
     @classmethod
     def clean(cls, x):
-        # (batch, letra)
+        # x (batch, pasos_de_tiempo)
         output = []
         for sequence in x:
             clean_seq = []
-
-            if sequence[0] != '-':
-                clean_seq.append(sequence[0])
-
-            # i es la letra actual, j es la proxima. 
-            # i cambia cuando añado una letra nueva en j
-            for i in range(len(sequence)):
-                for j in range(i, len(sequence)):
-                    if sequence[i] != sequence[j] and sequence[j] != '-':
-                        clean_seq.append(sequence[j])
-                        break
+            last_char = None
             
-            # para probar con el modelo desentrenado
-            while len(clean_seq) < 5:
-                clean_seq.append('-')
-            
-            if len(clean_seq) > 5:
+            for char in sequence:
+                if char != last_char:
+                    if char != '-':
+                        clean_seq.append(char)
+                
+                last_char = char
+
+            if len(clean_seq) < 5:
+                clean_seq.extend(['-'] * (5 - len(clean_seq)))
+            else:
                 clean_seq = clean_seq[:5]
-            
+                
             output.append(np.array(clean_seq))
-        
+            
         return np.array(output)
     
     @classmethod

@@ -17,3 +17,7 @@ uv.lock
 dataset/
 pruebas.py
 lightning_logs/
+.vscode/
+debug.*
+i2w.json
+w2i.json

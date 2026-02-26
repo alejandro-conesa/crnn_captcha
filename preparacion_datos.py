@@ -1,9 +1,10 @@
 import torch
 import os
 from PIL import Image
+import json
 
 class CaptchaDataset(torch.utils.data.Dataset):
-    def __init__(self, path_to_txt="dataset/guides", augments=None, name="base"):
+    def __init__(self, path_to_txt="dataset/guides", augments=None, name="base", splits=[0.65, 0.15, 0.2]):
         self.images = []
         self.labels = []
         self.path_to_txt = path_to_txt
@@ -12,7 +13,7 @@ class CaptchaDataset(torch.utils.data.Dataset):
         self.augments = augments
         self.name = name
 
-        self.load_all()
+        self.load_all(splits=splits)
     
     def __len__(self):
         return len(self.images)
@@ -20,6 +21,10 @@ class CaptchaDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         if self.stage == "loaded":
             img = Image.open(self.images[index])
+            if index == 0:
+                img.save('debug.png')
+                with open('debug.txt', mode='w') as file:
+                    file.write("".join(self.labels[index]))
             if self.augments is not None:
                 img = self.augments(img)
             return img, self.labels[index]
@@ -37,11 +42,11 @@ class CaptchaDataset(torch.utils.data.Dataset):
             if path != 'guides':
                 self.images.append(dataset_path + path)
                 label = path[:5]
-                self.labels.append(label)
+                self.labels.append([char for char in label])
     
-    def create_subsets(self):
+    def create_subsets(self, lengths=[0.65, 0.15, 0.2]):
         train_ds, val_ds, test_ds = torch.utils.data.random_split(
-            self, lengths=[0.65, 0.15, 0.2]
+            self, lengths=lengths
         )
         return train_ds, val_ds, test_ds
 
@@ -54,7 +59,7 @@ class CaptchaDataset(torch.utils.data.Dataset):
     def save_to_text(self):
         with open(file=f"{self.path_to_txt}/{self.name}.txt", mode="w") as wfile:
             for i in range(len(self.images)):
-                wfile.write(self.images[i] + " " + self.labels[i] + "\n")
+                wfile.write(self.images[i] + " " + "".join(self.labels[i]) + "\n")
     
     def load_from_text(self, file):
         with open(file=file, mode="r") as rfile:
@@ -62,10 +67,10 @@ class CaptchaDataset(torch.utils.data.Dataset):
             while line != "":
                 processed_line = line.strip("\n").split(sep=" ")
                 self.images.append(processed_line[0])
-                self.labels.append(processed_line[1])
+                self.labels.append([char for char in processed_line[1]])
                 line = rfile.readline()
 
-    def load_all(self):
+    def load_all(self, splits):
         if self.name == "base":
             self.train_ds = CaptchaDataset(name="train", augments=self.augments)
             self.val_ds = CaptchaDataset(name="val", augments=self.augments)
@@ -81,7 +86,7 @@ class CaptchaDataset(torch.utils.data.Dataset):
             else:
                 # procesar y crear texto
                 self.process_images()
-                train_subset, val_subset, test_subset = self.create_subsets()
+                train_subset, val_subset, test_subset = self.create_subsets(lengths=splits)
                 # los subsets son una clase "envoltorio" de los dataset
                 # gracias a eso podemos hacer toda la lógica de procesamiento en la clase base
                 self.train_ds.load_from_subset(train_subset)
@@ -108,6 +113,12 @@ class CaptchaDataset(torch.utils.data.Dataset):
                     i2w[str(count)] = letra
                     count += 1
         
+        with open('w2i.json', mode='w') as file:
+            file.write(json.dumps(w2i))
+        
+        with open('i2w.json', mode='w') as file:
+            file.write(json.dumps(i2w))
+
         return w2i, i2w
 
 if __name__ == "__main__":
