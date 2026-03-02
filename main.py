@@ -88,11 +88,43 @@ class Lightning_CRNN(L.LightningModule):
         target_lengths = torch.full((current_batch_size,), 5, dtype=torch.long)
 
         loss = self.ctc_loss(log_prob, target, input_lengths, target_lengths)
-        self.log("train_loss", loss, on_epoch=True)
+        self.log("val_loss", loss, on_epoch=True)
 
         cer = [Utils.calculate_cer(gts, ps) for gts, ps in zip(ground_truth_string, prediccion_string)]
         cer_mean = sum(cer)/len(cer)
-        self.log("character_error_rate", cer_mean, on_epoch=True)
+        self.log("val_character_error_rate", cer_mean, on_epoch=True)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        inputs, target = batch
+        output = self.modelo(inputs)
+        target = Utils.batch_w2i(target, self.modelo.w2i)
+        target = target.permute(1, 0)
+
+        prediccion = output.softmax(dim = 2)
+        prediccion = prediccion.argmax(dim = 2)
+        prediccion = Utils.transcription(prediccion, self.modelo.i2w)
+        prediccion = Utils.clean(prediccion)
+        ground_truth = Utils.transcription(target, self.modelo.i2w)
+
+        # lista con strings objetivo para calcular cer
+        prediccion_string = ["".join(sublist) for sublist in prediccion.tolist()]
+        # print(target.size())
+        ground_truth_string = ["".join(sublist) for sublist in ground_truth.tolist()]
+
+        output = output.permute(1, 0, 2)
+        log_prob = torch.nn.functional.log_softmax(output, dim=2)
+        T = log_prob.size(0)
+        current_batch_size = log_prob.size(1)
+        input_lengths = torch.full((current_batch_size,), T, dtype=torch.long)
+        target_lengths = torch.full((current_batch_size,), 5, dtype=torch.long)
+
+        loss = self.ctc_loss(log_prob, target, input_lengths, target_lengths)
+        self.log("test_loss", loss, on_epoch=True)
+
+        cer = [Utils.calculate_cer(gts, ps) for gts, ps in zip(ground_truth_string, prediccion_string)]
+        cer_mean = sum(cer)/len(cer)
+        self.log("test_character_error_rate", cer_mean, on_epoch=True)
         return loss
     
     def configure_optimizers(self):
@@ -103,15 +135,15 @@ class Lightning_CRNN(L.LightningModule):
             "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}
         }
 
-def main(name, seed, accelerator, devices=1):
+def main(name, seed, accelerator, epochs, lr, wd, devices=1):
     seed_everything(seed)
 
     dataset = CaptchaDataset(augments=transforms)
     dm = CRNNDataModule(dataset=dataset, batch_size=BATCH_SIZE)
     w2i, i2w = dataset.get_w2i()
-    modelo = Lightning_CRNN(CaptchaCRNN(w2i, i2w), 1e-4, 1e-5)
+    modelo = Lightning_CRNN(CaptchaCRNN(w2i, i2w), lr, wd)
 
-    # wandb = WandbLogger(project="crnn_captcha", name=name, log_model=False)
+    wandb = WandbLogger(project="crnn_captcha", name=name, log_model=False)
     # # early_stopping = EarlyStopping(monitor="character_error_rate", mode="min", verbose=True, patience=4, min_delta=0.02)
     # ckpt = ModelCheckpoint(
     #     dirpath="weights",
@@ -123,8 +155,9 @@ def main(name, seed, accelerator, devices=1):
     summary = ModelSummary(max_depth=3)
 
 
-    trainer = L.Trainer(accelerator=accelerator, devices=devices, max_epochs=200, callbacks=[summary])
+    trainer = L.Trainer(accelerator=accelerator, devices=devices, max_epochs=epochs, callbacks=[summary], logger=wandb)
     trainer.fit(modelo, datamodule=dm)
+    trainer.test(modelo, datamodule=dm)
 
     # print(np.array(dataset.labels))
 

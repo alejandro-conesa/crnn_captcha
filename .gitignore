@@ -21,3 +21,5 @@ lightning_logs/
 debug.*
 i2w.json
 w2i.json
+crnn_captcha/
+wandb/
