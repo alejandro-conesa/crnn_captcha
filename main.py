@@ -27,9 +27,6 @@ class Lightning_CRNN(L.LightningModule):
         self.lr = lr
         self.wd = wd
         self.ctc_loss = torch.nn.CTCLoss(blank=0, zero_infinity=True)
-
-        with torch.no_grad():
-            self.modelo.dense.bias.data[0] = -5.0
     
     def forward(self, x):
         return self.modelo(x)
@@ -128,7 +125,7 @@ class Lightning_CRNN(L.LightningModule):
         return loss
     
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.wd)
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.lr, weight_decay=self.wd)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
         return {
             "optimizer": optimizer,
@@ -138,36 +135,26 @@ class Lightning_CRNN(L.LightningModule):
 def main(name, seed, accelerator, epochs, lr, wd, devices=1):
     seed_everything(seed)
 
-    dataset = CaptchaDataset(augments=transforms)
+    dataset = CaptchaDataset(transforms=transforms)
     dm = CRNNDataModule(dataset=dataset, batch_size=BATCH_SIZE)
     w2i, i2w = dataset.get_w2i()
     modelo = Lightning_CRNN(CaptchaCRNN(w2i, i2w), lr, wd)
 
     wandb = WandbLogger(project="crnn_captcha", name=name, log_model=False)
-    # # early_stopping = EarlyStopping(monitor="character_error_rate", mode="min", verbose=True, patience=4, min_delta=0.02)
-    # ckpt = ModelCheckpoint(
-    #     dirpath="weights",
-    #     filename=f"{100}ep-{name}",
-    #     verbose=True,
-    #     monitor="character_error_rate", 
-    #     mode="min"
-    # )
+    early_stopping = EarlyStopping(monitor="val_character_error_rate", mode="min", verbose=True, patience=5, min_delta=0.02)
+    ckpt = ModelCheckpoint(
+        dirpath="weights",
+        filename=f"{epochs}ep-{name}",
+        verbose=True,
+        monitor="val_character_error_rate", 
+        mode="min"
+    )
     summary = ModelSummary(max_depth=3)
 
 
-    trainer = L.Trainer(accelerator=accelerator, devices=devices, max_epochs=epochs, callbacks=[summary], logger=wandb)
+    trainer = L.Trainer(accelerator=accelerator, devices=devices, max_epochs=epochs, callbacks=[summary, early_stopping, ckpt], logger=wandb, check_val_every_n_epoch=5)
     trainer.fit(modelo, datamodule=dm)
     trainer.test(modelo, datamodule=dm)
-
-    # print(np.array(dataset.labels))
-
-    # for data in dm.train_dataloader():
-    # #     # data es una lista con el tensor de la imagen y una tupla que contiene SOLO el string objetivo
-    #     output_batch = modelo(data[0])
-    #     print(output_batch.shape)
-    #     # convierte al mismo formato que el output
-    #     # print(np.array([[letra for letra in label] for label in data[1]]))
-    #     break
 
 if __name__ == '__main__':
     Fire(main)

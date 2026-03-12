@@ -4,13 +4,13 @@ from PIL import Image
 import json
 
 class CaptchaDataset(torch.utils.data.Dataset):
-    def __init__(self, path_to_txt="dataset/guides", augments=None, name="base", splits=[0.65, 0.15, 0.2]):
+    def __init__(self, path_to_txt="dataset/guides", transforms=None, name="base", splits=[0.65, 0.15, 0.2]):
         self.images = []
         self.labels = []
         self.path_to_txt = path_to_txt
         os.makedirs(self.path_to_txt, exist_ok=True)
         self.stage = "loaded"
-        self.augments = augments
+        self.transforms = transforms
         self.name = name
 
         self.load_all(splits=splits)
@@ -25,8 +25,8 @@ class CaptchaDataset(torch.utils.data.Dataset):
                 img.save('debug.png')
                 with open('debug.txt', mode='w') as file:
                     file.write("".join(self.labels[index]))
-            if self.augments is not None:
-                img = self.augments(img)
+            if self.transforms is not None:
+                img = self.transforms(img)
             return img, self.labels[index]
         else:
             return self.images[index], self.labels[index]
@@ -72,9 +72,9 @@ class CaptchaDataset(torch.utils.data.Dataset):
 
     def load_all(self, splits):
         if self.name == "base":
-            self.train_ds = CaptchaDataset(name="train", augments=self.augments)
-            self.val_ds = CaptchaDataset(name="val", augments=self.augments)
-            self.test_ds = CaptchaDataset(name="test", augments=self.augments)
+            self.train_ds = CaptchaDataset(name="train", transforms=self.transforms)
+            self.val_ds = CaptchaDataset(name="val", transforms=self.transforms)
+            self.test_ds = CaptchaDataset(name="test", transforms=self.transforms)
             self.stage = "loading"
 
             if len(os.listdir(self.path_to_txt)) == 4:
