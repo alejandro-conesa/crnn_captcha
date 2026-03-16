@@ -27,6 +27,7 @@ class Lightning_CRNN(L.LightningModule):
         self.lr = lr
         self.wd = wd
         self.ctc_loss = torch.nn.CTCLoss(blank=0, zero_infinity=True)
+        self.save_hyperparameters()
     
     def forward(self, x):
         return self.modelo(x)

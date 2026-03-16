@@ -1,1 +1,1 @@
-uv run main.py --name prueba7_sgd --seed 8 --accelerator cpu --epochs 200 --lr 0.1 --wd 1e-5
+uv run main.py --name v1_sgd_estable --seed 8 --accelerator cpu --epochs 200 --lr 0.1 --wd 1e-5
